@@ -1,0 +1,39 @@
+services:
+  sharelatex:
+    image: haydartuna/latex:latest
+    container_name: sharelatex
+    restart: always
+    ports:
+      - "8080:80"
+    volumes:
+      - overleaf-data:/var/lib/overleaf
+    environment:
+      OVERLEAF_SITE_URL: http://127.0.0.1:8080
+      OVERLEAF_MONGO_URL: mongodb://mongo/sharelatex?replicaSet=overleaf
+      OVERLEAF_REDIS_HOST: redis
+    depends_on:
+      - mongo
+      - redis
+
+  mongo:
+    image: mongo:8
+    container_name: overleaf-mongo
+    restart: always
+    command: ["--replSet", "overleaf", "--bind_ip_all"]
+    volumes:
+      - overleaf-mongo:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "try { rs.status().ok } catch(e) { rs.initiate({_id:'overleaf', members:[{_id:0, host:'mongo:27017'}]}).ok }"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 20s
+
+  redis:
+    image: redis:7
+    container_name: overleaf-redis
+    restart: always
+
+volumes:
+  overleaf-data:
+  overleaf-mongo:
